@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (J-Link SWD)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/make/output/power_sampler_f411.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "jlink",
+            "device": "STM32F411CE",
+            "interface": "swd",
+            "runToEntryPoint": "main"
+        },
+        {
+            "name": "Debug (OpenOCD ST-Link SWD)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/make/output/power_sampler_f411.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "runToEntryPoint": "main"
+        }
+    ]
+}

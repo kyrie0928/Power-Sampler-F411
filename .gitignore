@@ -1,0 +1,10 @@
+build/
+out/
+.eide/log/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+compile_commands.json

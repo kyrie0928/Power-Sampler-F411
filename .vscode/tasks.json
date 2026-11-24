@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "env": {
+            "PATH": "${env:USERPROFILE}\\.eide\\bin\\builder\\msys\\bin;${env:USERPROFILE}\\.eide\\tools\\gcc_arm\\bin;${env:PATH}"
+        }
+    },
+    "tasks": [
+        {
+            "label": "Build Firmware (Make + EIDE GCC)",
+            "type": "shell",
+            "command": "${env:USERPROFILE}/.eide/bin/builder/msys/bin/make.exe",
+            "args": [
+                "-j8",
+                "TOOLCHAIN_DIR=${env:USERPROFILE}/.eide/tools/gcc_arm/bin"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Clean Firmware (Make)",
+            "type": "shell",
+            "command": "${env:USERPROFILE}/.eide/bin/builder/msys/bin/make.exe",
+            "args": ["clean"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Firmware (CMake Release)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--preset", "release"],
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
