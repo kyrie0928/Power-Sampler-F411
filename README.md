@@ -19,8 +19,10 @@
 | **电流 ADC** | `PA6` / `PA7` / `PB0` / `PB1` | `ADC1_IN6..IN9` + `TIM2` 10kHz DMA | `IN6=IADC3(50Ω)`, `IN7=IADC2(500mΩ)`, `IN8=IADC1(5mΩ)`, `IN9=1V5_REF` |
 | **24位电压 ADC** | `PB12..PB15`, `PA0` | `U2 ADS1220IPWR` (`SPI2` Mode 1 + `EXTI0`) | `AIN0=SENS4` 主输入, `AIN1..3=V_IN1..3`（`47k/2.2k` 0.1% 分压，`PGA_BYPASS=1`） |
 | **校准存储** | `PB6` (`SCL`), `PB7` (`SDA`) | `U4 BL24C02F` (`I2C1`, `0x50`) | `0x00` 主分区 + `0x80` 备份分区双副本 CRC16 存储 |
-| **主控通信口 (`H4`)** | `PA9` (`TX`), `PA10` (`RX`) | `USART1` (`115200 8N1`) | 对接 **ESP32 (`lvgl-demo`)** 串口采集与控制 |
-| **调试/测精度口 (`H3`)** | `PA2` (`TX`), `PA3` (`RX`) | `USART2` (`115200 8N1`) | 交互式三挡精度统计与校准 CLI |
+| **主控通信口 (`H4.2..3`)** | `PA9` (`TX`), `PA10` (`RX`) | `USART1` (`115200 8N1`) | 经 `R29/R30 (100 Ω)` 对接 **ESP32 (`lvgl-demo`)**，与 SWD 复用 8P 排针 `H4` |
+| **SWD 烧录调试口 (`H4.5..8`)** | `PA13` (`SWDIO`), `PA14` (`SWCLK`) | `H4.5~8` (`SWDIO/SWCLK/GND/3V3`) | 4 线 SWD 接口（支持 ST-Link V2/V3、DAP-Link、J-Link），未引出 `NRST` |
+| **调试/测精度口 (`H3`)** | `PA2` (`TX`), `PA3` (`RX`) | `USART2` (`115200 8N1`) | 经 `R31/R34 (100 Ω)` 接 `H3`，交互式三挡精度统计与校准 CLI |
+| **5V 供电输入 (`H2`)** | — | `H2.1=GND`, `H2.2=VIN5V` | 经 `U10 (BL8039)` 降压生成系统 `3V3` |
 | **预留扩展 IO (`H1`)** | `PA8`, `PA11`, `PA12` | `H1.6`, `H1.5`, `H1.4` | 默认高阻输入，支持通过 CLI 或 ESP32 协议动态配置输入/上下拉/推挽/开漏 |
 
 ### 相对原开源 `Power-Pico` 的关键工程修正
@@ -57,14 +59,24 @@ gcc -std=c11 -O2 -Wall -Wextra -Werror -DHOST_UNIT_TEST \
     -lm -o /tmp/test_ps && /tmp/test_ps
 ```
 
+### 2.4 SWD 烧录与调试（ST-Link / DAP-Link / J-Link）
+板上 **`H4`（1x8P 2.54 mm 排针）的 Pin 5~8** 即为 4 线 SWD 接口，兼容 **ST-Link V2/V3、DAP-Link、J-Link**：
+- `H4 Pin 5`：`SWDIO` (`PA13`)
+- `H4 Pin 6`：`SWCLK` (`PA14`)
+- `H4 Pin 7`：`GND`
+- `H4 Pin 8`：`3V3`（仅接 3.3V，板子已从 `H2` 上电时可不接此脚）
+
+> [!NOTE]
+> `H4` 未引出 `NRST` 复位引脚，烧录器复位方式请保持默认的 **Software Reset**（不要勾选 Connect Under Reset / Hardware Reset）。在 VS Code 中可直接选择 `launch.json` 内的 `Debug (OpenOCD ST-Link SWD)` 或在 EIDE 中切换烧录器为 `STLink`。
+
 ---
 
 ## 3. 三挡电流与四路电压精度实测 & 校准流程（`H3 / USART2`）
 
-将 USB-TTL（`3.3V` 电平）连接至 **`H3`**：
-- `H3 TX (PA2)` → USB-TTL `RX`
-- `H3 RX (PA3)` → USB-TTL `TX`
-- `H3 GND` → USB-TTL `GND`
+将 USB-TTL（`3.3V` 电平）连接至 **`H3`（1x3P 2.54 mm 排针）**：
+- `H3 Pin 1 (LOG_HOST_RX)`：经 `R31 (100 Ω)` 连 `PA2 (USART2_TX)` → 接 USB-TTL `RX`
+- `H3 Pin 2 (LOG_HOST_TX)`：经 `R34 (100 Ω)` 连 `PA3 (USART2_RX)` → 接 USB-TTL `TX`
+- `H3 Pin 3 (GND)` → USB-TTL `GND`
 - 波特率：**`115200 8N1`**，行尾 `CR/LF`
 
 ### 3.1 分挡零点清零（负载端 `J2` 悬空开路）
@@ -116,13 +128,23 @@ cal zero
 
 ## 4. ESP32 (`lvgl-demo`) 接线与 `H4 (USART1)` 通信协议
 
-### 4.1 物理接线（3.3V TTL 直连）
-| `采样pcb` (`H4`) | STM32 引脚 | ESP32 (`lvgl-demo`) |
-| :--- | :--- | :--- |
-| `H4 Pin 1 (+5V)` | `+5V` | 可由外部供电或与底板 `5V` 共电（确认单点供电防倒灌） |
-| `H4 Pin 2 (HOST_TX)` | `PA10 (USART1_RX)` | `ESP32 TX`（如 `GPIO17`） |
-| `H4 Pin 3 (HOST_RX)` | `PA9 (USART1_TX)` | `ESP32 RX`（如 `GPIO16`） |
-| `H4 Pin 4 (GND)` | `GND` | `GND` |
+### 4.1 物理接线（`H4` 8P 排针：3.3V 串口 + SWD 复用 & `H2` 5V 供电）
+
+> [!CAUTION]
+> **`H4 Pin 1` 与 `H4 Pin 8` 均为 `3V3` 网络！切勿将 `5V` 接到 `H4`，否则会直接损坏 STM32 / ADS1220。** 整板 5V 供电输入请接入 **`H2`**（`H2 Pin 1 = GND`，`H2 Pin 2 = VIN5V`）。
+
+| 排针序号 | 原理图网络 | STM32 引脚 / 连接 | 外部对接（ESP32 / 烧录器） |
+| :--- | :--- | :--- | :--- |
+| `H4 Pin 1` | `3V3` | 系统 `3.3 V` 电源轨 | 仅用于 `3.3 V` 逻辑参考或供电（**严禁接 5V**） |
+| `H4 Pin 2` | `HOST_RX` | 经 `R29 (100 Ω)` 连 `PA9 (USART1_TX)` | 接 **ESP32 `RX`**（如 `GPIO16`） |
+| `H4 Pin 3` | `HOST_TX` | 经 `R30 (100 Ω)` 连 `PA10 (USART1_RX)` | 接 **ESP32 `TX`**（如 `GPIO17`） |
+| `H4 Pin 4` | `GND` | `GND` | 接 **ESP32 `GND`** |
+| `H4 Pin 5` | `SWDIO` | `PA13` | 接 **ST-Link `SWDIO`** |
+| `H4 Pin 6` | `SWCLK` | `PA14` | 接 **ST-Link `SWCLK`** |
+| `H4 Pin 7` | `GND` | `GND` | 接 **ST-Link `GND`** |
+| `H4 Pin 8` | `3V3` | 系统 `3.3 V` 电源轨 | 接 **ST-Link `3V3`**（与板子供电共电时注意避免电源冲突） |
+
+> 5V 主供电接入 **`H2`（1x2P 排针）**：`H2 Pin 1 = GND`，`H2 Pin 2 = VIN5V`（经 `U10 BL8039` 降压产生 `3V3`）。
 
 串口参数：**`115200 8N1`**，小端序（Little-Endian）。
 
