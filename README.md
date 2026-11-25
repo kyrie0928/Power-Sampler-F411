@@ -20,7 +20,7 @@
 | **24位电压 ADC** | `PB12..PB15`, `PA0` | `U2 ADS1220IPWR` (`SPI2` Mode 1 + `EXTI0`) | `AIN0=SENS4` 主输入, `AIN1..3=V_IN1..3`（`47k/2.2k` 0.1% 分压，`PGA_BYPASS=1`） |
 | **校准存储** | `PB6` (`SCL`), `PB7` (`SDA`) | `U4 BL24C02F` (`I2C1`, `0x50`) | `0x00` 主分区 + `0x80` 备份分区双副本 CRC16 存储 |
 | **主控通信口 (`H4.2..3`)** | `PA9` (`TX`), `PA10` (`RX`) | `USART1` (`115200 8N1`) | 经 `R29/R30 (100 Ω)` 对接 **ESP32 (`lvgl-demo`)**，与 SWD 复用 8P 排针 `H4` |
-| **SWD 烧录调试口 (`H4.5..8`)** | `PA13` (`SWDIO`), `PA14` (`SWCLK`) | `H4.5~8` (`SWDIO/SWCLK/GND/3V3`) | 4 线 SWD 接口（支持 ST-Link V2/V3、DAP-Link、J-Link），未引出 `NRST` |
+| **SWD 烧录调试口 (`H4.5..8`)** | `PA13` (`SWDIO`), `PA14` (`SWCLK`) | `H4.5~8` (`SWDIO/SWCLK/GND/3V3`) | 4 线 SWD 接口（ST-Link V2/V3），未引出 `NRST` |
 | **调试/测精度口 (`H3`)** | `PA2` (`TX`), `PA3` (`RX`) | `USART2` (`115200 8N1`) | 经 `R31/R34 (100 Ω)` 接 `H3`，交互式三挡精度统计与校准 CLI |
 | **5V 供电输入 (`H2`)** | — | `H2.1=GND`, `H2.2=VIN5V` | 经 `U10 (BL8039)` 降压生成系统 `3V3` |
 | **预留扩展 IO (`H1`)** | `PA8`, `PA11`, `PA12` | `H1.6`, `H1.5`, `H1.4` | 默认高阻输入，支持通过 CLI 或 ESP32 协议动态配置输入/上下拉/推挽/开漏 |
@@ -59,15 +59,15 @@ gcc -std=c11 -O2 -Wall -Wextra -Werror -DHOST_UNIT_TEST \
     -lm -o /tmp/test_ps && /tmp/test_ps
 ```
 
-### 2.4 SWD 烧录与调试（ST-Link / DAP-Link / J-Link）
-板上 **`H4`（1x8P 2.54 mm 排针）的 Pin 5~8** 即为 4 线 SWD 接口，兼容 **ST-Link V2/V3、DAP-Link、J-Link**：
+### 2.4 ST-Link SWD 烧录与调试
+板上 **`H4`（1x8P 2.54 mm 排针）的 Pin 5~8** 即为 4 线 SWD 接口，本工程统一使用 **ST-Link（V2 / V3）+ OpenOCD**：
 - `H4 Pin 5`：`SWDIO` (`PA13`)
 - `H4 Pin 6`：`SWCLK` (`PA14`)
 - `H4 Pin 7`：`GND`
 - `H4 Pin 8`：`3V3`（仅接 3.3V，板子已从 `H2` 上电时可不接此脚）
 
 > [!NOTE]
-> `H4` 未引出 `NRST` 复位引脚，烧录器复位方式请保持默认的 **Software Reset**（不要勾选 Connect Under Reset / Hardware Reset）。在 VS Code 中可直接选择 `launch.json` 内的 `Debug (OpenOCD ST-Link SWD)` 或在 EIDE 中切换烧录器为 `STLink`。
+> `H4` 未引出 `NRST` 复位引脚，烧录与调试请保持默认的 **Software Reset**（不要勾选 Connect Under Reset / Hardware Reset）。`.eide/eide.json`（`OpenOCD`，`interface=stlink`，`target=stm32f4x`，首次在 VS Code EIDE 面板“实用工具 → 安装实用工具”中安装 OpenOCD）与 `.vscode/launch.json`（`Debug (OpenOCD ST-Link SWD)`）均已就绪。
 
 ---
 

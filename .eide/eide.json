@@ -40,17 +40,12 @@
         },
         "options": "null"
       },
-      "uploader": "JLink",
+      "uploader": "OpenOCD",
       "uploadConfig": {
         "bin": "",
-        "baseAddr": "0x08000000",
-        "cpuInfo": {
-          "vendor": "ST",
-          "cpuName": "STM32F411CE"
-        },
-        "proType": 1,
-        "speed": 4000,
-        "otherCmds": ""
+        "target": "stm32f4x",
+        "interface": "stlink",
+        "baseAddr": "0x08000000"
       },
       "uploadConfigMap": {},
       "custom_dep": {

@@ -19,9 +19,9 @@
 1. **仓库命名与工具链**：独立新建 Git 仓库 `c:\Users\kyrie\DeskBox\Folder\Power-Sampler-F411`；使用 **VS Code + EIDE / Make / CMake**（本机工具链位于 `C:\Users\kyrie\.eide\tools\gcc_arm\bin\arm-none-eabi-gcc.exe` 15.2.1 与 `C:\Users\kyrie\.eide\bin\builder\msys\bin\make.exe`）。
 2. **`H1` 预留普通 IO（`PA8 / PA11 / PA12`）**：上电默认安全高阻输入，同时支持 `H3` CLI（`io cfg/set/read`）与 `H4` ESP32 串口协议（`0x20/0x21/0x22`）动态切换输入、上下拉、推挽或开漏输出。
 3. **`H4 (USART1)` 对接 ESP32 (`lvgl-demo`)**：弃用原 `PowerPico_Client` PC USB 私有协议，改用轻量 `0xAA 0x55` + `CRC16-CCITT` 小端序二进制协议，输出整数定标物理量（`10 nA`、`1 µV`、`1 nW`、`1 µJ`）及 `48 B` 紧凑快照，支持轮询（`0x02`）与 `10~10000 ms` 定时推流（`0x60`）。
-4. **烧录器约定**：用户实板计划使用 **ST-Link** 通过 `H4.5..8`（4 线 SWD，无 `NRST`，Software Reset）烧录。
-   - `.vscode/launch.json` 已包含 `Debug (OpenOCD ST-Link SWD)`；
-   - `.eide/eide.json` 当前 `uploader` 字段仍默认为 `JLink`，如用户希望 EIDE 图形按钮一键用 ST-Link 烧录，可按需改写为 `STLink`。
+4. **烧录器约定**：本项目仅支持 **ST-Link（OpenOCD 后端）** 通过 `H4.5..8`（4 线 SWD，无 `NRST`，Software Reset）烧录与调试：
+   - `.vscode/launch.json` 仅保留 `Debug (OpenOCD ST-Link SWD)`；
+   - `.eide/eide.json` 的 `uploader` 已配置为 `OpenOCD`（`interface=stlink`、`target=stm32f4x`、`baseAddr=0x08000000`）。
 5. **相比原版 `Power-Pico` 的实核硬件修正**：
    - `25 MHz HSE -> 100 MHz SYSCLK`，`APB1 = 50 MHz` / `APB2 = 100 MHz` / `TIMCLK = 100 MHz` / `ADCCLK = 25 MHz`；
    - 修正 `ADC1` 扫描序列：移除悬空 `PA5 (IN5)`，采样周期提升至 `84 CYCLES`，消除采样保持电容向 `PA6 (LOW_CUR)` 的通道串扰；
@@ -51,8 +51,7 @@
    - 按 `README.md` 第 3 节 SOP，在 `J2` 开路下依次完成 `low / mid / high` `cal zero`，再用标准源/六位半万用表完成 `cal cur`、`cal vol`、`prec 2000` 噪声统计评估并 `cal save` 掉电重上电复核。
 3. **动态负载阶跃换挡示波器复测**：
    - 在 `range auto` 下测试 `400 µA ↔ 2 mA` 与 `40 mA ↔ 80 mA` 跳变，确认 `45 ms` 降挡消隐与 `< 1 ms` DMA 紧急保护无震荡、无误跳挡；注意输入共模电压勿超过 `INA190` `40 V` 耐压上限。
-4. **可选 EIDE 烧录器切换**：如用户需要，在 `.eide/eide.json` 将默认 `uploader` 由 `JLink` 调整为 `STLink`。
-5. **ESP32 (`lvgl-demo`) 联调接入**：将 `README.md` 第 4 节的 `48 B` 帧解析器接入 `W:\mnt\project\lvgl-demo` 串口屏幕界面。
+4. **ESP32 (`lvgl-demo`) 联调接入**：将 `README.md` 第 4 节的 `48 B` 帧解析器接入 `W:\mnt\project\lvgl-demo` 串口屏幕界面。
 
 ---
 
