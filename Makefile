@@ -6,6 +6,7 @@ BUILD_DIR   := build/make
 OUT_DIR     := $(BUILD_DIR)/output
 
 TOOLCHAIN_DIR ?=
+TOOLCHAIN_DIR := $(subst \,/,$(TOOLCHAIN_DIR))
 ifneq ($(strip $(TOOLCHAIN_DIR)),)
 PREFIX := $(TOOLCHAIN_DIR)/arm-none-eabi-
 else

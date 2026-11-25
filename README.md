@@ -36,16 +36,24 @@
 ## 2. 编译、单元测试与烧录
 
 ### 2.1 VS Code + EIDE / GNU Make 编译
-项目已内置 `.eide/eide.json`、`.vscode/tasks.json`、`.vscode/launch.json` 与 `Makefile`：
+项目已内置 `Power-Sampler-F411.code-workspace`、`.eide/eide.yml`、`.vscode/tasks.json`、`.vscode/launch.json` 与 `Makefile`：
+- **EIDE 侧边栏构建**（推荐，配合 EIDE 一键烧录）：打开 `Power-Sampler-F411.code-workspace` 后点击 EIDE 的 **Build**，产物位于 `build/eide/Release/Power-Sampler-F411.{hex,bin,elf}`。
+- **Make / `Ctrl + Shift + B` 构建**（配合 `F5` 单步调试）：
 ```powershell
 & "C:\Users\kyrie\.eide\bin\builder\msys\bin\make.exe" -j8 TOOLCHAIN_DIR="C:/Users/kyrie/.eide/tools/gcc_arm/bin"
 ```
-产物位于 `build/make/output/power_sampler_f411.{elf,hex,bin}`。
+产物位于 `build/make/output/power_sampler_f411.{hex,bin,elf}`。
+
+| 固件格式 | 是否含烧录地址 | 适用场景与注意 |
+| :--- | :--- | :--- |
+| **`.hex`**（推荐） | **自带地址 `0x08000000`** 与校验 | EIDE 默认烧录格式；无需手填地址，不易烧错偏移 |
+| **`.bin`** | **不含地址**（纯二进制） | 任何工具烧录 `.bin` 都**必须手动指定起始地址 `0x08000000`** |
+| **`.elf`** | 含地址与源码调试符号 | 供 VS Code `F5`（OpenOCD + GDB）单步调试使用，也可直接给 OpenOCD 烧录 |
 
 ### 2.2 CMake 编译（可选）
 ```powershell
-cmake --preset release
-cmake --build --preset release
+cmake --preset Release
+cmake --build --preset Release
 ```
 
 ### 2.3 主机端算法与协议单元测试（WSL / Linux GCC）
@@ -64,10 +72,48 @@ gcc -std=c11 -O2 -Wall -Wextra -Werror -DHOST_UNIT_TEST \
 - `H4 Pin 5`：`SWDIO` (`PA13`)
 - `H4 Pin 6`：`SWCLK` (`PA14`)
 - `H4 Pin 7`：`GND`
-- `H4 Pin 8`：`3V3`（仅接 3.3V，板子已从 `H2` 上电时可不接此脚）
+- `H4 Pin 8`：`3V3`（仅接 3.3V，**严禁接 5V**；板子已从 `H2` 供 5V 时可不接此脚）
 
 > [!NOTE]
-> `H4` 未引出 `NRST` 复位引脚，烧录与调试请保持默认的 **Software Reset**（不要勾选 Connect Under Reset / Hardware Reset）。`.eide/eide.json`（`OpenOCD`，`interface=stlink`，`target=stm32f4x`，首次在 VS Code EIDE 面板“实用工具 → 安装实用工具”中安装 OpenOCD）与 `.vscode/launch.json`（`Debug (OpenOCD ST-Link SWD)`）均已就绪。
+> `H4` 未引出 `NRST` 复位引脚，烧录与调试请保持默认的 **Software Reset**（不要勾选 Connect Under Reset / Hardware Reset）。
+
+#### 方式 1：VS Code EIDE 一键烧录（默认 `.hex`，推荐）
+1. 在 VS Code 打开根目录的 `Power-Sampler-F411.code-workspace`（首次使用请在 EIDE `Operations → Setup Utility Tools` 安装 **`OpenOCD`**）；
+2. 点击 EIDE 面板的 **Build** 生成 `build/eide/Release/Power-Sampler-F411.hex`，再点击 **Program Flash**；
+3. EIDE 按 `.eide/eide.yml` 自动调用 OpenOCD 烧录 **`.hex`** 并执行校验与复位运行；如需改烧 **`.bin`**，在 EIDE `Flasher Configurations : OpenOCD` 中指定 `bin` 路径并保持 `baseAddr` 为 `0x08000000`。
+
+#### 方式 2：OpenOCD 命令行烧录（`.hex` 与 `.bin` 命令对比）
+> 如使用 Make 编译产物，只需把下面路径中的 `build/eide/Release/Power-Sampler-F411.*` 替换为 `build/make/output/power_sampler_f411.*` 即可。
+
+- **烧录 `.hex`（自带地址，不写偏移）**：
+```powershell
+$openocd = (Get-Item "$env:USERPROFILE\.eide\tools\openocd*\bin\openocd.exe" | Select-Object -First 1).FullName
+& $openocd -f interface/stlink.cfg -f target/stm32f4x.cfg `
+  -c "program build/eide/Release/Power-Sampler-F411.hex verify reset exit"
+```
+
+- **烧录 `.bin`（不含地址，必须显式加上 `0x08000000`）**：
+```powershell
+$openocd = (Get-Item "$env:USERPROFILE\.eide\tools\openocd*\bin\openocd.exe" | Select-Object -First 1).FullName
+& $openocd -f interface/stlink.cfg -f target/stm32f4x.cfg `
+  -c "program build/eide/Release/Power-Sampler-F411.bin 0x08000000 verify reset exit"
+```
+
+#### 方式 3：STM32CubeProgrammer（图形界面 / CLI，适合无 VS Code 电脑或产线）
+- **图形界面（GUI）**：连接方式选 **`SWD`**，Mode 选 **`Normal`**，Reset Mode 选 **`Software system reset`**：
+  - 烧录 **`.hex`**：打开 `.hex` 文件后直接点 `Start Programming`（自动识别 `0x08000000`）；
+  - 烧录 **`.bin`**：打开 `.bin` 文件后，**必须确认 `Start address` 填写为 `0x08000000`** 再点 `Start Programming`。
+- **命令行（`STM32_Programmer_CLI`）**：
+```powershell
+# 烧录 .hex（自带地址）
+STM32_Programmer_CLI -c port=SWD reset=SWrst -w build/eide/Release/Power-Sampler-F411.hex -v -rst
+
+# 烧录 .bin（必须带 0x08000000）
+STM32_Programmer_CLI -c port=SWD reset=SWrst -w build/eide/Release/Power-Sampler-F411.bin 0x08000000 -v -rst
+```
+
+#### 方式 4：VS Code `F5` 在线单步调试（自动下载 `.elf`）
+先按 `Ctrl + Shift + B` 生成 `build/make/output/power_sampler_f411.elf`，再按 `F5` 启动 `.vscode/launch.json` 中的 `Debug (OpenOCD ST-Link SWD)`。
 
 ---
 

@@ -21,7 +21,7 @@
 3. **`H4 (USART1)` 对接 ESP32 (`lvgl-demo`)**：弃用原 `PowerPico_Client` PC USB 私有协议，改用轻量 `0xAA 0x55` + `CRC16-CCITT` 小端序二进制协议，输出整数定标物理量（`10 nA`、`1 µV`、`1 nW`、`1 µJ`）及 `48 B` 紧凑快照，支持轮询（`0x02`）与 `10~10000 ms` 定时推流（`0x60`）。
 4. **烧录器约定**：本项目仅支持 **ST-Link（OpenOCD 后端）** 通过 `H4.5..8`（4 线 SWD，无 `NRST`，Software Reset）烧录与调试：
    - `.vscode/launch.json` 仅保留 `Debug (OpenOCD ST-Link SWD)`；
-   - `.eide/eide.json` 的 `uploader` 已配置为 `OpenOCD`（`interface=stlink`、`target=stm32f4x`、`baseAddr=0x08000000`）。
+   - `.eide/eide.yml`（配合根目录 `Power-Sampler-F411.code-workspace`）的 `uploader` 已配置为 `OpenOCD`（`interface=stlink`、`target=stm32f4x`、`baseAddr=0x08000000`）。
 5. **相比原版 `Power-Pico` 的实核硬件修正**：
    - `25 MHz HSE -> 100 MHz SYSCLK`，`APB1 = 50 MHz` / `APB2 = 100 MHz` / `TIMCLK = 100 MHz` / `ADCCLK = 25 MHz`；
    - 修正 `ADC1` 扫描序列：移除悬空 `PA5 (IN5)`，采样周期提升至 `84 CYCLES`，消除采样保持电容向 `PA6 (LOW_CUR)` 的通道串扰；

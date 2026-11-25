@@ -28,10 +28,20 @@
             "problemMatcher": []
         },
         {
+            "label": "Rebuild Firmware (Clean + Make)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Clean Firmware (Make)",
+                "Build Firmware (Make + EIDE GCC)"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
             "label": "Build Firmware (CMake Release)",
             "type": "shell",
             "command": "cmake",
-            "args": ["--preset", "release"],
+            "args": ["--preset", "Release"],
             "problemMatcher": ["$gcc"]
         }
     ]
