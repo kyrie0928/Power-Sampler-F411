@@ -102,6 +102,7 @@ DEPS     := $(ALL_OBJS:.o=.d)
 .PHONY: all clean
 
 all: $(OUT_DIR)/$(TARGET).elf $(OUT_DIR)/$(TARGET).hex $(OUT_DIR)/$(TARGET).bin
+	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/copy_versioned_fw.ps1 -HeaderPath Core/Inc/fw_version.h -OutDir $(OUT_DIR) -BaseName $(TARGET)
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)

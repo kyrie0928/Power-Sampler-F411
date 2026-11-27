@@ -14,6 +14,7 @@ typedef struct {
     volatile uint16_t tx_head;
     volatile uint16_t tx_tail;
     volatile uint32_t rx_overrun_cnt;
+    volatile uint32_t activity_cnt;
     bool              initialized;
 } uart_ctx_t;
 
@@ -104,6 +105,10 @@ size_t bsp_uart_write(bsp_uart_port_t port, const uint8_t *data, size_t length)
         ctx->tx_head = next;
     }
 
+    if (written > 0U) {
+        ctx->activity_cnt++;
+    }
+
     if (ctx->tx_head != ctx->tx_tail) {
         ctx->regs->CR1 |= USART_CR1_TXEIE;
     }
@@ -150,6 +155,14 @@ uint32_t bsp_uart_get_rx_overrun_count(bsp_uart_port_t port)
     return s_uarts[port].rx_overrun_cnt;
 }
 
+uint32_t bsp_uart_get_activity_count(bsp_uart_port_t port)
+{
+    if ((uint8_t)port >= (uint8_t)BSP_UART_COUNT) {
+        return 0UL;
+    }
+    return s_uarts[port].activity_cnt;
+}
+
 void bsp_uart_flush_tx_blocking(bsp_uart_port_t port, uint32_t timeout_ms)
 {
     if ((uint8_t)port >= (uint8_t)BSP_UART_COUNT || !s_uarts[port].initialized) {
@@ -187,6 +200,7 @@ void bsp_uart_irq_handler(bsp_uart_port_t port)
             if (next != ctx->rx_tail) {
                 ctx->rx_buf[ctx->rx_head] = byte;
                 ctx->rx_head = next;
+                ctx->activity_cnt++;
             } else {
                 ctx->rx_overrun_cnt++;
             }

@@ -17,16 +17,23 @@
 #define FAST_GUARD_HIGH_RAIL_LSB        4083U
 #define FAST_GUARD_CONFIRM_SAMPLES      2U
 
-/* LED heartbeat periods */
-#define LED_PERIOD_NORMAL_MS            500UL
-#define LED_PERIOD_FAULT_MS             100UL
-#define STARTUP_ADS_GRACE_MS            250UL
-
 /* Max bytes drained per poll iteration from Host UART */
 #define HOST_UART_POLL_CHUNK_BYTES      64U
 
-static bool     s_eeprom_ok   = false;
-static uint32_t s_last_led_ms = 0UL;
+/* UART activity LED pulse shaping: idle SOLID ON, brief OFF blink per TX/RX burst */
+#define LED_UART_ACT_OFF_MS             30UL
+#define LED_UART_ACT_COOLDOWN_ON_MS     40UL
+
+typedef enum {
+    LED_STATE_IDLE_ON = 0,
+    LED_STATE_ACT_OFF,
+    LED_STATE_ACT_COOLDOWN_ON
+} app_led_state_t;
+
+static bool            s_eeprom_ok           = false;
+static app_led_state_t s_led_state           = LED_STATE_IDLE_ON;
+static uint32_t        s_led_state_ts_ms     = 0UL;
+static uint32_t        s_last_uart_act_count = 0UL;
 
 /* Ultra-short integer-only ISR hook: protects R16 (50R) & R17 (500mR) against sudden load steps */
 static void fast_adc_guard_isr(const uint16_t samples[BSP_ADC_CHUNK_SAMPLES][BSP_ADC_CH_COUNT])
@@ -170,7 +177,11 @@ void app_main_init(void)
         Error_Handler();
     }
 
-    s_last_led_ms = bsp_timebase_get_ms();
+    s_led_state           = LED_STATE_IDLE_ON;
+    s_led_state_ts_ms     = bsp_timebase_get_ms();
+    s_last_uart_act_count = bsp_uart_get_activity_count(BSP_UART_HOST)
+                          + bsp_uart_get_activity_count(BSP_UART_DIAG);
+    bsp_led_set(true);
 }
 
 static void poll_adc_chunks(void)
@@ -205,18 +216,44 @@ static void poll_host_uart(uint32_t now_ms)
     svc_host_proto_poll_stream(now_ms);
 }
 
-static void poll_status_led(uint32_t now_ms)
+static void poll_uart_activity_led(uint32_t now_ms)
 {
-    svc_sampler_snapshot_t snap;
-    svc_sampler_get_snapshot(&snap);
+    uint32_t cur_act = bsp_uart_get_activity_count(BSP_UART_HOST)
+                     + bsp_uart_get_activity_count(BSP_UART_DIAG);
+    bool has_activity = (cur_act != s_last_uart_act_count);
 
-    bool overload   = ((snap.status_flags & SVC_STATUS_OVERLOAD_WARN) != 0U);
-    bool ads_fault  = (now_ms > STARTUP_ADS_GRACE_MS) && !drv_ads1220_is_online();
-    uint32_t period = (overload || ads_fault) ? LED_PERIOD_FAULT_MS : LED_PERIOD_NORMAL_MS;
+    switch (s_led_state) {
+        case LED_STATE_IDLE_ON:
+            if (has_activity) {
+                s_last_uart_act_count = cur_act;
+                s_led_state           = LED_STATE_ACT_OFF;
+                s_led_state_ts_ms     = now_ms;
+                bsp_led_set(false);
+            }
+            break;
 
-    if ((now_ms - s_last_led_ms) >= period) {
-        s_last_led_ms = now_ms;
-        bsp_led_toggle();
+        case LED_STATE_ACT_OFF:
+            if ((now_ms - s_led_state_ts_ms) >= LED_UART_ACT_OFF_MS) {
+                s_last_uart_act_count = cur_act;
+                s_led_state           = LED_STATE_ACT_COOLDOWN_ON;
+                s_led_state_ts_ms     = now_ms;
+                bsp_led_set(true);
+            }
+            break;
+
+        case LED_STATE_ACT_COOLDOWN_ON:
+        default:
+            if ((now_ms - s_led_state_ts_ms) >= LED_UART_ACT_COOLDOWN_ON_MS) {
+                if (has_activity) {
+                    s_last_uart_act_count = cur_act;
+                    s_led_state           = LED_STATE_ACT_OFF;
+                    s_led_state_ts_ms     = now_ms;
+                    bsp_led_set(false);
+                } else {
+                    s_led_state = LED_STATE_IDLE_ON;
+                }
+            }
+            break;
     }
 }
 
@@ -232,5 +269,5 @@ void app_main_poll(void)
     uint32_t now_ms = bsp_timebase_get_ms();
     poll_host_uart(now_ms);
     app_diag_cli_poll(now_ms);
-    poll_status_led(now_ms);
+    poll_uart_activity_led(now_ms);
 }

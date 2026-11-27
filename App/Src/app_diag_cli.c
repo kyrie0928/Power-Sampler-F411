@@ -1,5 +1,6 @@
 #include "app_diag_cli.h"
 #include "app_main.h"
+#include "fw_version.h"
 #include "bsp_gpio.h"
 #include "bsp_adc_dma.h"
 #include "bsp_uart.h"
@@ -152,6 +153,7 @@ static void cmd_help(void)
 {
     cli_printf("\r\n=== Power-Sampler-F411 Diag & Precision CLI (H3/USART2) ===\r\n");
     cli_printf("  help                          : Show command list\r\n");
+    cli_printf("  ver | version                 : Show firmware version & build time\r\n");
     cli_printf("  status | snap                 : Full measurement & raw ADC snapshot\r\n");
     cli_printf("  watch <50..5000|off>          : Live periodic telemetry on H3\r\n");
     cli_printf("  range <auto|low|mid|high>     : Set auto-range or lock 50R/500mR/5mR\r\n");
@@ -168,12 +170,23 @@ static void cmd_help(void)
     cli_printf("  io set <0..2> <0|1>           : Drive H1 GPIO output\r\n");
 }
 
+static void cmd_version(void)
+{
+    cli_printf("Power-Sampler-F411 FW %s (Built %s %s, HostProto v%u)\r\n",
+               FW_VERSION_STRING,
+               FW_BUILD_DATE,
+               FW_BUILD_TIME,
+               (unsigned)PROTO_VERSION);
+}
+
 static void cmd_status(void)
 {
     svc_sampler_snapshot_t snap;
     svc_sampler_get_snapshot(&snap);
 
-    cli_printf("\r\n--- Snapshot @ %lu ms ---\r\n", (unsigned long)(snap.timestamp_us / 1000ULL));
+    cli_printf("\r\n--- Snapshot @ %lu ms | FW %s ---\r\n",
+               (unsigned long)(snap.timestamp_us / 1000ULL),
+               FW_VERSION_STRING);
     cli_printf("  Range : Mode=%s  Active=%s  Switches=%lu\r\n",
                range_mode_str(snap.range_mode),
                drv_shunt_range_name(snap.active_range),
@@ -574,6 +587,8 @@ static void dispatch_line(char *line)
 
     if (strcmp(argv[0], "help") == 0 || strcmp(argv[0], "?") == 0) {
         cmd_help();
+    } else if (strcmp(argv[0], "ver") == 0 || strcmp(argv[0], "version") == 0) {
+        cmd_version();
     } else if (strcmp(argv[0], "status") == 0 || strcmp(argv[0], "snap") == 0) {
         cmd_status();
     } else if (strcmp(argv[0], "watch") == 0) {
@@ -603,7 +618,8 @@ void app_diag_cli_init(void)
     s_last_watch_ms       = 0UL;
     s_prec_report_pending = false;
 
-    cli_printf("\r\n[Power-Sampler-F411] Ready on H3(USART2 115200). Type 'help' for 3-range precision & cal commands.\r\n> ");
+    cli_printf("\r\n[Power-Sampler-F411 %s | %s %s] Ready on H3(USART2 115200). Type 'help' for commands.\r\n> ",
+               FW_VERSION_STRING, FW_BUILD_DATE, FW_BUILD_TIME);
 }
 
 void app_diag_cli_poll(uint32_t now_ms)

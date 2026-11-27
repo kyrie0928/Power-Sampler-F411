@@ -1,4 +1,5 @@
 #include "svc_host_proto.h"
+#include "fw_version.h"
 #include <string.h>
 
 #define RX_PARSE_BUF_SIZE (PROTO_MAX_FRAME_LEN * 2U)
@@ -153,9 +154,9 @@ static void handle_frame(uint8_t ver, uint8_t cmd, uint16_t seq, const uint8_t *
                 s_ops.get_snapshot(&snap);
             }
             uint32_t up = (s_ops.get_uptime_ms != NULL) ? s_ops.get_uptime_ms() : 0UL;
-            resp[0] = 1U; /* FW major */
-            resp[1] = 0U; /* FW minor */
-            resp[2] = 0U; /* FW patch */
+            resp[0] = (uint8_t)FW_VERSION_MAJOR;
+            resp[1] = (uint8_t)FW_VERSION_MINOR;
+            resp[2] = (uint8_t)FW_VERSION_PATCH;
             resp[3] = snap.status_flags;
             write_u32_le(&resp[4], up);
             resp_len = 8U;

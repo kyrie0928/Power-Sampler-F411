@@ -47,7 +47,11 @@ targets:
         floatingPointHardware: single
         options:
           version: 5
-          afterBuildTasks: []
+          afterBuildTasks:
+            - name: Generate versioned firmware (.hex/.bin)
+              abortAfterFailed: true
+              command: powershell -NoProfile -ExecutionPolicy Bypass -File "${ProjectRoot}/scripts/copy_versioned_fw.ps1" -HeaderPath "${ProjectRoot}/Core/Inc/fw_version.h" -OutDir "${OutDir}" -BaseName "${ProjectName}"
+              disable: false
           asm-compiler: {}
           beforeBuildTasks: []
           c/cpp-compiler:

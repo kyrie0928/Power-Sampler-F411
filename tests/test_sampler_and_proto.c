@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "board_pins.h"
+#include "fw_version.h"
 #include "svc_calib_store.h"
 #include "svc_sampler.h"
 #include "svc_host_proto.h"
@@ -422,6 +423,9 @@ static void test_host_uart_protocol_for_esp32(void)
     assert(s_tx_capture_len == 78U);
     assert(s_tx_capture[3] == (uint8_t)(PROTO_CMD_PING | PROTO_RESPONSE_FLAG));
     assert(s_tx_capture[8] == PROTO_STATUS_OK);
+    assert(s_tx_capture[9]  == (uint8_t)FW_VERSION_MAJOR);
+    assert(s_tx_capture[10] == (uint8_t)FW_VERSION_MINOR);
+    assert(s_tx_capture[11] == (uint8_t)FW_VERSION_PATCH);
 
     const uint8_t *snap_resp = &s_tx_capture[19];
     assert(snap_resp[3] == (uint8_t)(PROTO_CMD_GET_SNAPSHOT | PROTO_RESPONSE_FLAG));

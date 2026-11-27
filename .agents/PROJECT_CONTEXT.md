@@ -45,7 +45,7 @@
 ## 4. 下一阶段待办与上板检查清单
 
 1. **ST-Link 首次上板与电源检查**：
-   - 使用 ST-Link 接 `H4.5..8`（若 `H2` 已供 `5V` 则只接 `SWDIO/SWCLK/GND`）烧录，确认 `PC13 (LED1)` 正常 `500 ms` 闪烁（`ADS1220` 在线前/异常时为 `100 ms` 快闪）。
+   - 使用 ST-Link 接 `H4.5..8`（若 `H2` 已供 `5V` 则只接 `SWDIO/SWCLK/GND`）烧录，确认 `PC13 (LED1)` 上电常亮，H3/H4 串口收发数据时清晰暗闪。
    - 实测板上 `VDD (U10 BL8039 -> 3.3 V)` 与 `VDDA (U6 REF3030 -> 3.000 V)` 压差（接近 STM32F411 数据手册 `|VDD - VDDA| <= 300 mV` 边界），通过 `H3` 执行 `status` 检查 `1V5_REF (PB1)` 原始码是否稳定在 `2048 ± 10 LSB`。
 2. **三挡精度实测与 EEPROM 校准（`H3 / USART2` 115200）**：
    - 按 `README.md` 第 3 节 SOP，在 `J2` 开路下依次完成 `low / mid / high` `cal zero`，再用标准源/六位半万用表完成 `cal cur`、`cal vol`、`prec 2000` 噪声统计评估并 `cal save` 掉电重上电复核。

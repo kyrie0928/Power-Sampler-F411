@@ -20,6 +20,7 @@ size_t bsp_uart_write(bsp_uart_port_t port, const uint8_t *data, size_t length);
 size_t bsp_uart_write_str(bsp_uart_port_t port, const char *str);
 size_t bsp_uart_read(bsp_uart_port_t port, uint8_t *out_buf, size_t max_length);
 uint32_t bsp_uart_get_rx_overrun_count(bsp_uart_port_t port);
+uint32_t bsp_uart_get_activity_count(bsp_uart_port_t port);
 void bsp_uart_flush_tx_blocking(bsp_uart_port_t port, uint32_t timeout_ms);
 void bsp_uart_irq_handler(bsp_uart_port_t port);
 
